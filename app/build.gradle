@@ -3,6 +3,24 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 26
     buildToolsVersion "26.0.2"
+
+    signingConfigs {
+
+        debug {
+            storeFile file("KeyStore/raindbow.keysote")
+            storePassword "raindbow"
+            keyAlias "raindbow"
+            keyPassword "raindbow"
+        }
+
+        release {
+            keyAlias 'raindbow'
+            keyPassword 'raindbow'
+            storeFile file("KeyStore/raindbow.keysote")
+            storePassword 'raindbow'
+        }
+    }
+
     defaultConfig {
         applicationId "com.demo.ming.webview"
         minSdkVersion 15
