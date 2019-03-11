@@ -57,4 +57,10 @@ dependencies {
 
     compile  'com.umeng.umsdk:analytics:7.5.4'
     compile  'com.umeng.umsdk:common:1.5.4'
+
+    //响应式编程库rxjava
+    compile "io.reactivex:rxjava:1.1.5"
+    compile "io.reactivex:rxandroid:1.2.0"
+    //加载框
+    compile 'com.wang.avi:library:2.1.3'
 }

@@ -12,7 +12,7 @@ import com.umeng.commonsdk.UMConfigure;
 public class MyApplication extends Application {
 
     public static Application instanse;
-    public static String cookie;
+    public static String cookie="";
 
     @Override
     public void onCreate() {

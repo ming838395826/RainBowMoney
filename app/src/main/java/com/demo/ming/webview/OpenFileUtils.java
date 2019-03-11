@@ -139,7 +139,18 @@ public class OpenFileUtils {
         Intent intent = new Intent("android.intent.action.VIEW");
         intent.addCategory("android.intent.category.DEFAULT");
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        Uri uri = Uri.fromFile(new File(filePath));
+        Uri uri;
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
+            uri = Uri.fromFile(new File(filePath));
+        } else {
+            /**
+             * 7.0 调用系统相机拍照不再允许使用Uri方式，应该替换为FileProvider
+             * 并且这样可以解决MIUI系统上拍照返回size为0的情况
+             */
+            uri = FileProvider.getUriForFile(MyApplication.instanse.getBaseContext(),
+                    BuildConfig.APPLICATION_ID + ".fileProvider",
+                    new File(filePath));
+        }
         if (!TextUtils.isEmpty(mimeType)) {
             mimeType = mimeType.toLowerCase().trim();
             if (mimeType.startsWith("image/")) {
@@ -165,7 +176,7 @@ public class OpenFileUtils {
                 intent.setDataAndType(uri, "application/x-gzip");
             }else if (mimeType.compareTo("text/plain") == 0) {
                 intent.setDataAndType(uri, mimeType);
-            } else {
+            }else {
                 intent.setDataAndType(uri, mimeType);
             }
         } else {

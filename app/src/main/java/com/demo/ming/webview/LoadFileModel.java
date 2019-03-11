@@ -30,7 +30,7 @@ public class LoadFileModel {
 
                                           Request request = original.newBuilder()
                                                   .header("User-Agent", "Your-App-Name")
-                                                  .header("Cookie",MyApplication.cookie)
+                                                  .header("Cookie",MyApplication.cookie==null?"":MyApplication.cookie)
                                                   .header("Accept", "application/vnd.yourapi.v1.full+json")
                                                   .method(original.method(), original.body())
                                                   .build();

@@ -1,8 +1,15 @@
 package com.demo.ming.webview;
 
+import android.Manifest;
+import android.app.Activity;
 import android.app.Application;
 import android.app.DownloadManager;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -10,8 +17,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -43,6 +53,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import okhttp3.Headers;
@@ -50,6 +61,11 @@ import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import rx.Observable;
+import rx.Subscriber;
+import rx.Subscription;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Func1;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -64,10 +80,23 @@ public class MainActivity extends AppCompatActivity {
     private TextView tv_title;
     private RelativeLayout rl_title;
 
+    //通知栏
+    private NotificationManager mNtfManager;
+    private Notification.Builder mNtfBuilder;
+    private static final int NOTIFICATION_FLAG = 1;
+    private Activity mActivity;
+    private Subscription mMainSubscription; //延迟
+
+    private static String[] PERMISSIONS_STORAGE = {
+            "android.permission.READ_EXTERNAL_STORAGE",
+            "android.permission.WRITE_EXTERNAL_STORAGE" };
+    private static final int REQUEST_EXTERNAL_STORAGE = 1;
+
     /**
      * 打开的Url
      */
     private String openUrl = "https://h5.chsd.vip";
+//    private String openUrl = "https://www.pgyer.com/WpkZ";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
 //                mWebView.clearHistory(); // 清除
             }
         });
+        mActivity=this;
         initWebView();
     }
 
@@ -107,6 +137,18 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         MobclickAgent.onResume(this);
+        try {
+            //检测是否有写的权限
+            int permission = ActivityCompat.checkSelfPermission(this,
+                    "android.permission.WRITE_EXTERNAL_STORAGE");
+            if (permission != PackageManager.PERMISSION_GRANTED) {
+                // 没有写的权限，去申请写的权限，会弹出对话框
+                ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE,REQUEST_EXTERNAL_STORAGE);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     protected void onPause() {
@@ -158,8 +200,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 //设定加载结束的操作
-//                CookieManager cookieManager = CookieManager.getInstance();
-//                MyApplication.cookie = cookieManager.getCookie(url);
+                CookieManager cookieManager = CookieManager.getInstance();
+                MyApplication.cookie = cookieManager.getCookie(url);
                 if(mWebView.canGoBack()){
                     runOnUiThread(new Runnable() {
                         @Override
@@ -241,7 +283,7 @@ public class MainActivity extends AppCompatActivity {
         }
         settings.setCacheMode(WebSettings.LOAD_DEFAULT
                 | WebSettings.LOAD_CACHE_ELSE_NETWORK);
-//        mWebView.setDownloadListener(new MyWebViewDownLoadListener());
+        mWebView.setDownloadListener(new MyWebViewDownLoadListener());
 
 
         //将WebView添加到底部布局
@@ -279,15 +321,19 @@ public class MainActivity extends AppCompatActivity {
 //            startActivity(intent);
 //            initDownLoad(url);
 //            FileActivity.show(MainActivity.this, url);
-            if(tempUrl.equalsIgnoreCase(url)){
-                return;
-            }
+//            if(tempUrl.equalsIgnoreCase(url)){
+//                return;
+//            }
             tempUrl=url;
-            Intent intent = new Intent(MainActivity.this, FileActivity.class);
-            Bundle bundle = new Bundle();
-            bundle.putSerializable("path", url);
-            intent.putExtras(bundle);
-            startActivity(intent);
+//            Intent intent = new Intent(MainActivity.this, FileActivity.class);
+//            Bundle bundle = new Bundle();
+//            bundle.putSerializable("path", url);
+//            intent.putExtras(bundle);
+//            startActivity(intent);
+            mProgressBarNormal.setVisibility(View.VISIBLE);
+            downLoadFile(url);
+
+
         }
 
 //        @Override
@@ -394,7 +440,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void downLoadFile(String url) {
+    public void downLoadFile(final String url) {
 
         LoadFileModel.loadPdfFile(url, new Callback<ResponseBody>() {
             @Override
@@ -402,8 +448,14 @@ public class MainActivity extends AppCompatActivity {
 //                TLog.d(TAG, "下载文件-->onResponse");
                 Headers headers = response.headers();
                 String disposition = headers.get("Content-disposition");
-                String fileName = disposition.split(";")[1].split("=")[1];
-                fileName = fileName.substring(1, fileName.length() - 1);
+                String fileName="";
+                if(TextUtils.isEmpty(disposition)){
+                    String[] split = url.split("/");
+                    fileName=split[split.length-1];
+                }else {
+                    fileName = disposition.split(";")[1].split("=")[1];
+                    fileName = fileName.substring(1, fileName.length() - 1);
+                }
                 try {
                     fileName = URLDecoder.decode(fileName, "UTF-8");
                 } catch (UnsupportedEncodingException e) {
@@ -412,8 +464,13 @@ public class MainActivity extends AppCompatActivity {
                 String cacheDir= Environment.getExternalStorageDirectory() +File.separator+"webview";
                 File cacheFile = new File(cacheDir + File.separator + fileName);
                 if (cacheFile.exists()) {
-                    mProgressBarNormal.setVisibility(View.GONE);
-                    openFile(cacheFile.getPath());
+                    cacheFile.delete();
+                }
+                if (cacheFile.exists()) {
+//                    cacheFile.delete();
+//                    mProgressBarNormal.setVisibility(View.GONE);
+//                    openFile(cacheFile.getPath());
+                    installAPk(cacheFile.getPath());
                 } else {
                     InputStream is = null;
                     byte[] buf = new byte[2048];
@@ -427,22 +484,83 @@ public class MainActivity extends AppCompatActivity {
                         if (!file1.exists()) {
                             file1.mkdirs();
                         }
-                        File fileN = new File(cacheDir + File.separator + fileName);
+                        final File fileN = new File(cacheDir + File.separator + fileName);
                         if (!fileN.exists()) {
                             boolean mkdir = fileN.createNewFile();
                         }
                         fos = new FileOutputStream(fileN);
+
+//                        mNtfManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+//                        mNtfBuilder = new Notification.Builder(mActivity)
+//                                .setSmallIcon(R.mipmap.ic_logo)
+//                                .setTicker("开始下载")
+//                                .setContentTitle(getString(R.string.app_name))
+//                                .setContentText("正在下载APK");
+//                        Notification ntf = mNtfBuilder.getNotification();
+//                        ntf.flags |= Notification.FLAG_AUTO_CANCEL;
+//                        mNtfManager.notify(NOTIFICATION_FLAG, ntf);
+
                         long sum = 0;
                         while ((len = is.read(buf)) != -1) {
                             fos.write(buf, 0, len);
                             sum += len;
                             int progress = (int) (sum * 1.0f / total * 100);
                             mProgressBarNormal.setProgress(progress);
+//                            if ((sum == 0)
+//                                    || (int) (total * 100 / sum) - 10 > sum){
+//                                mNtfBuilder.setTicker("开始下载")
+//                                        .setContentTitle("正在下载")
+//                                        .setContentText("下载进度"+(int) sum * 100 / total+ "%");
+//                                mNtfManager.notify(NOTIFICATION_FLAG, mNtfBuilder.getNotification());
+//                            }
 //                        TLog.d(TAG, "写入缓存文件" + fileN.getName() + "进度: " + progress);
                         }
                         fos.flush();
                         mProgressBarNormal.setVisibility(View.GONE);
-                        openFile(fileN.getPath());
+                        installAPk(fileN.getPath());
+//                        mMainSubscription= Observable.interval(0, 1, TimeUnit.SECONDS)
+//                                .map(new Func1<Long, Long>() {
+//                                    @Override public Long call(Long increaseTime) {
+//                                        return 1 - increaseTime; } }) .
+//                                        take(2)
+//                                .observeOn(AndroidSchedulers.mainThread())
+//                                .subscribe(new Subscriber<Long>() {
+//                                    @Override
+//                                    public void onCompleted() {
+////                                        Uri uri;
+////                                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M) {
+////                                            uri = Uri.fromFile(fileN);
+////                                        } else {
+////                                            /**
+////                                             * 7.0 调用系统相机拍照不再允许使用Uri方式，应该替换为FileProvider
+////                                             * 并且这样可以解决MIUI系统上拍照返回size为0的情况
+////                                             */
+////                                            uri = FileProvider.getUriForFile(MyApplication.instanse.getBaseContext(),
+////                                                    BuildConfig.APPLICATION_ID + ".fileProvider",
+////                                                    fileN);
+////                                        }
+////                                        Intent installIntent = new Intent(Intent.ACTION_VIEW);
+////                                        installIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+////                                        installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+////                                        installIntent.setDataAndType(uri,"application/vnd.android.package-archive");
+////                                        PendingIntent updatePendingIntent=PendingIntent.getActivity(getBaseContext(), 0, installIntent,0);
+////                                        mNtfBuilder.setTicker("下载完成")
+////                                                .setContentTitle("下载完成,点击安装")
+////                                                .setContentText("点击安装")
+////                                                .setContentIntent(updatePendingIntent);
+////                                        mNtfManager.notify(NOTIFICATION_FLAG, mNtfBuilder.getNotification());
+////                                        mNtfManager.cancel(NOTIFICATION_FLAG);
+//                                        installAPk(fileN.getPath());
+//                                    }
+//                                    @Override
+//                                    public void onError(Throwable e) {
+//                                    }
+//                                    @Override
+//                                    public void onNext(Long aLong) {
+//
+//                                    }
+//                                });
+//                        openFile(fileN.getPath());
                     } catch (Exception e) {
                         mProgressBarNormal.setVisibility(View.GONE);
                         showToast("下载失败");
@@ -474,7 +592,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void openFile(String filePath) {
         String fFileType = filePath.substring(filePath.lastIndexOf(".")+1);
-        if (true||"jpg".equals(fFileType) || "gif".equals(fFileType) || "png".equals(fFileType) || "jpeg".equals(fFileType) || "bmp".equals(fFileType) || "doc".equals(fFileType) || "docx".equals(fFileType) || "xls".equals(fFileType) || "pdf".equals(fFileType) || "ppt".equals(fFileType)) {
+        if ("apk".equals(fFileType) ||"jpg".equals(fFileType) || "gif".equals(fFileType) || "png".equals(fFileType) || "jpeg".equals(fFileType) || "bmp".equals(fFileType) || "doc".equals(fFileType) || "docx".equals(fFileType) || "xls".equals(fFileType) || "pdf".equals(fFileType) || "ppt".equals(fFileType)) {
             String mimeType = "";
             if (fFileType != null) {
                 mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fFileType);
@@ -499,5 +617,37 @@ public class MainActivity extends AppCompatActivity {
 
     public void showToast(String message){
         Toast.makeText(this,message,Toast.LENGTH_SHORT).show();
+    }
+
+
+    public void installAPk(String path){
+        File apkfile = new File(path);
+        if (!apkfile.exists()) {
+            return;
+        }
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_VIEW);
+        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Uri contentUri = FileProvider.getUriForFile(MyApplication.instanse.getBaseContext(), BuildConfig.APPLICATION_ID + ".fileProvider", apkfile);
+            intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
+            //兼容8.0
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                boolean hasInstallPermission = getPackageManager().canRequestPackageInstalls();
+                if (!hasInstallPermission) {
+                    //请求安装未知应用来源的权限
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.REQUEST_INSTALL_PACKAGES}, 6666);
+                }
+            }
+        } else {
+            // 通过Intent安装APK文件
+            intent.setDataAndType(Uri.parse("file://" + apkfile.toString()),
+                    "application/vnd.android.package-archive");
+        }
+        if (getPackageManager().queryIntentActivities(intent, 0).size() > 0) {
+           startActivity(intent);
+        }
+
     }
 }
