@@ -53,6 +53,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -91,6 +94,11 @@ public class MainActivity extends AppCompatActivity {
             "android.permission.READ_EXTERNAL_STORAGE",
             "android.permission.WRITE_EXTERNAL_STORAGE" };
     private static final int REQUEST_EXTERNAL_STORAGE = 1;
+
+    private List<String> noTtitle=new ArrayList<>(Arrays.asList("https://h5.chsd.vip/#/tabs/home",
+            "https://h5.chsd.vip/#/tabs/loan",
+            "https://h5.chsd.vip/#/tabs/canborrow?recommendFlag=2&name=%E8%83%BD%E5%80%9F%E5%88%B0",
+            "https://h5.chsd.vip/#/tabs/my"));
 
     /**
      * 打开的Url
@@ -186,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void doUpdateVisitedHistory(WebView webView, String s, boolean b) {
                 super.doUpdateVisitedHistory(webView, s, b);
-                if (s.equalsIgnoreCase("https://h5.chsd.vip/#/tabs/home")) {
+                if (noTtitle.contains(s)) {
                     webView.clearHistory();
                 }
             }
