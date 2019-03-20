@@ -19,6 +19,7 @@ public class MyApplication extends Application {
         super.onCreate();
         instanse=this;
         UMConfigure.init(this, UMConfigure.DEVICE_TYPE_PHONE,"");
+        UMConfigure.setLogEnabled(false);
         initX5();
 
     }

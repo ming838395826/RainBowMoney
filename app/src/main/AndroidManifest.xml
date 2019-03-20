@@ -67,7 +67,7 @@
             android:value="PpeRpHjyzL5vTlc9LuNrRmHM" />
 
         <!--value的值填写你在友盟后台申请的应用Appkey-->
-        <meta-data android:value="5c8242333fc1956e71000eed" android:name="UMENG_APPKEY"/>
+        <meta-data android:value="5c90b871203657a83000130a" android:name="UMENG_APPKEY"/>
         <meta-data android:value="Xiaomi" android:name="UMENG_CHANNEL"/>
 
         <activity

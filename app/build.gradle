@@ -7,7 +7,7 @@ android {
     signingConfigs {
 
         debug {
-            storeFile file("KeyStore/raindbow.keysote")
+            storeFile file("KeyStore/raindbow.keystore")
             storePassword "raindbow"
             keyAlias "raindbow"
             keyPassword "raindbow"
@@ -16,7 +16,7 @@ android {
         release {
             keyAlias 'raindbow'
             keyPassword 'raindbow'
-            storeFile file("KeyStore/raindbow.keysote")
+            storeFile file("KeyStore/raindbow.keystore")
             storePassword 'raindbow'
         }
     }

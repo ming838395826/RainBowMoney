@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/RainBowMoney.iml" filepath="$PROJECT_DIR$/RainBowMoney.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/rainbowMoney.iml" filepath="$PROJECT_DIR$/rainbowMoney.iml" />
     </modules>
   </component>
 </project>
